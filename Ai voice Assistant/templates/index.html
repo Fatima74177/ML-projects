@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI Voice Assistant powered by Speech Recognition, LLM and Text-to-Speech">
+    <title>AI Voice Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <main class="app-container">
+        <section class="assistant-panel">
+            <div class="top-bar">
+                <div class="brand">
+                    <div class="brand-icon">AI</div>
+
+                    <div>
+                        <h1>AI Voice Assistant</h1>
+                        <p>Intelligent voice conversation</p>
+                    </div>
+                </div>
+
+                <button id="newConversationButton" class="secondary-button" type="button">
+                    <span class="button-icon">+</span>
+                    New Conversation
+                </button>
+            </div>
+
+            <div class="assistant-content">
+                <div class="assistant-profile">
+                    <div id="avatarContainer" class="avatar-container">
+                        <div class="avatar-glow glow-one"></div>
+                        <div class="avatar-glow glow-two"></div>
+                        <div class="avatar-circle">
+                            <div class="robot-face">
+                                <div class="robot-head">
+                                    <div class="robot-eye left-eye"></div>
+                                    <div class="robot-eye right-eye"></div>
+                                    <div class="robot-mouth"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="soundWaves" class="sound-waves">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+
+                    <div class="assistant-details">
+                        <span id="statusBadge" class="status-badge">
+                            <span id="statusDot" class="status-dot"></span>
+                            <span id="statusText">Ready</span>
+                        </span>
+
+                        <h2>How can I help you?</h2>
+
+                        <p id="instructionText">
+                            Press Start Call and speak naturally.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="conversation-card">
+                    <div class="conversation-header">
+                        <div>
+                            <h3>Conversation</h3>
+                            <p>Your conversation will appear here.</p>
+                        </div>
+
+                        <div id="callTimer" class="call-timer">
+                            <span class="timer-dot"></span>
+                            <span id="timerText">00:00</span>
+                        </div>
+                    </div>
+
+                    <div id="conversationMessages" class="conversation-messages">
+                        <div id="emptyConversation" class="empty-conversation">
+                            <div class="empty-icon">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+
+                            <h4>No conversation yet</h4>
+                            <p>Start a call and ask your AI assistant anything.</p>
+                        </div>
+                    </div>
+
+                    <div id="typingIndicator" class="typing-indicator hidden">
+                        <div class="message-avatar ai-message-avatar">AI</div>
+
+                        <div class="typing-bubble">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorMessage" class="error-message hidden">
+                    <span class="error-icon">!</span>
+                    <span id="errorText">Something went wrong.</span>
+                    <button id="closeErrorButton" type="button" aria-label="Close error message">×</button>
+                </div>
+
+                <div class="call-controls">
+                    <button id="startCallButton" class="call-button start-call-button" type="button">
+                        <span class="control-icon microphone-icon">
+                            <span class="microphone-head"></span>
+                            <span class="microphone-stand"></span>
+                        </span>
+
+                        <span>
+                            <strong>Start Call</strong>
+                            <small>Begin voice conversation</small>
+                        </span>
+                    </button>
+
+                    <button id="endCallButton" class="call-button end-call-button" type="button" disabled>
+                        <span class="control-icon phone-icon">
+                            <span class="phone-shape">⌕</span>
+                        </span>
+
+                        <span>
+                            <strong>End Call</strong>
+                            <small>Stop current session</small>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="manual-input-section">
+                    <div class="manual-input-header">
+                        <span>Type instead</span>
+                        <small>Use text input if microphone access is unavailable</small>
+                    </div>
+
+                    <form id="textMessageForm" class="text-message-form">
+                        <input
+                            id="textMessageInput"
+                            type="text"
+                            name="message"
+                            placeholder="Type your message here..."
+                            autocomplete="off"
+                            maxlength="1000"
+                        >
+
+                        <button id="sendMessageButton" type="submit">
+                            <span>Send</span>
+                            <span class="send-arrow">➜</span>
+                        </button>
+                    </form>
+                </div>
+
+                <footer class="app-footer">
+                    <div class="footer-item">
+                        <span class="footer-dot"></span>
+                        Speech-to-Text
+                    </div>
+
+                    <div class="footer-item">
+                        <span class="footer-dot"></span>
+                        AI Response
+                    </div>
+
+                    <div class="footer-item">
+                        <span class="footer-dot"></span>
+                        Text-to-Speech
+                    </div>
+                </footer>
+            </div>
+        </section>
+    </main>
+
+    <audio id="responseAudio" hidden></audio>
+
+    <script>
+        window.voiceAssistantConfig = {
+            chatUrl: "{{ url_for('chat') }}",
+            conversationUrl: "{{ url_for('get_conversation') }}",
+            newConversationUrl: "{{ url_for('new_conversation') }}"
+        };
+    </script>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
