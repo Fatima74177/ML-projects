@@ -1,0 +1,8 @@
+streamlit
+pinecone
+groq
+sentence-transformers
+PyMuPDF
+python-dotenv
+numpy
+torch
