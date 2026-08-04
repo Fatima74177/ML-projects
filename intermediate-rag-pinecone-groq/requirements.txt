@@ -6,3 +6,5 @@ PyMuPDF
 python-dotenv
 numpy
 torch
+pytesseract
+Pillow
