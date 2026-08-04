@@ -1,4 +1,5 @@
 from typing import Any
+from core.ocr_service import OCRService
 
 import streamlit as st
 
@@ -11,6 +12,20 @@ from core.retriever import Retriever, calculate_retrieval_confidence
 from core.text_chunker import TextChunker
 from utils.logger import get_query_logger, log_query
 from utils.validators import sanitize_namespace, validate_pdf_upload
+
+ocr_test = OCRService(
+    language=settings.ocr_language,
+    dpi=settings.ocr_dpi,
+    minimum_native_characters=(
+        settings.ocr_min_native_characters
+    ),
+    tessdata_path=settings.tessdata_prefix,
+)
+
+st.write(
+    "OCR deployment status:",
+    ocr_test.get_status(),
+)
 
 st.set_page_config(
     page_title="Intermediate PDF RAG",
@@ -475,3 +490,4 @@ with history_tab:
                     f"{item['confidence'] * 100:.1f}% | "
                     f"Sources: {len(item['sources'])}"
                 )
+                

@@ -1,9 +1,15 @@
+import io
 import os
+import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import pymupdf
+import pytesseract
+from PIL import Image
+from pytesseract import TesseractNotFoundError
 
 
 @dataclass
@@ -16,10 +22,10 @@ class OCRResult:
 
 class OCRService:
     """
-    Extract text from digital, scanned, and mixed PDF pages.
+    OCR service for digital, scanned and mixed-content PDF pages.
 
-    The service automatically searches for the Tesseract language-data
-    directory on Windows, Linux, and Streamlit Community Cloud.
+    PyMuPDF renders the PDF page as an image.
+    Pytesseract sends that image to the installed Tesseract command.
     """
 
     VALID_MODES = {
@@ -41,9 +47,19 @@ class OCRService:
             minimum_native_characters
         )
 
-        self.tessdata_path = self._find_tessdata(
-            configured_path=tessdata_path
+        self.tessdata_path = self._validate_tessdata_path(
+            tessdata_path
         )
+
+        self.tesseract_command = (
+            self._configure_tesseract_command()
+        )
+
+        (
+            self.ocr_available,
+            self.ocr_status_message,
+            self.available_languages,
+        ) = self._check_tesseract()
 
     def extract_page_text(
         self,
@@ -54,7 +70,7 @@ class OCRService:
 
         if mode not in self.VALID_MODES:
             raise ValueError(
-                "OCR mode must be auto, always, or off."
+                "OCR mode must be auto, always or off."
             )
 
         native_text = page.get_text(
@@ -73,11 +89,10 @@ class OCRService:
             return self._perform_ocr(
                 page=page,
                 native_text=native_text,
-                full_page=True,
+                combine_with_native=False,
             )
 
-        # Auto mode:
-        # Use full-page OCR when very little selectable text exists.
+        # A page with very little selectable text is probably scanned.
         if (
             len(native_text)
             < self.minimum_native_characters
@@ -85,16 +100,15 @@ class OCRService:
             return self._perform_ocr(
                 page=page,
                 native_text=native_text,
-                full_page=True,
+                combine_with_native=False,
             )
 
-        # For a page containing normal text and images,
-        # OCR only the areas that do not already contain text.
+        # A mixed page may contain selectable text and images with text.
         if page.get_images(full=True):
             return self._perform_ocr(
                 page=page,
                 native_text=native_text,
-                full_page=False,
+                combine_with_native=True,
             )
 
         return OCRResult(
@@ -107,55 +121,83 @@ class OCRService:
         self,
         page: pymupdf.Page,
         native_text: str,
-        full_page: bool,
+        combine_with_native: bool,
     ) -> OCRResult:
-        if not self.tessdata_path:
+        if not self.ocr_available:
             return OCRResult(
                 text=native_text,
                 extraction_method="native_text_fallback",
                 ocr_used=False,
-                warning=(
-                    "OCR is unavailable because the Tesseract "
-                    "language-data folder could not be located. "
-                    "Check packages.txt in the GitHub repository root."
-                ),
+                warning=self.ocr_status_message,
             )
 
         try:
-            text_page = page.get_textpage_ocr(
-                language=self.language,
-                dpi=self.dpi,
-                full=full_page,
-                tessdata=self.tessdata_path,
-            )
+            page_image = self._render_page(page)
 
-            extracted_text = page.get_text(
-                "text",
-                textpage=text_page,
-                sort=True,
+            configuration = "--oem 3 --psm 3"
+
+            if self.tessdata_path:
+                configuration += (
+                    f' --tessdata-dir "{self.tessdata_path}"'
+                )
+
+            ocr_text = pytesseract.image_to_string(
+                page_image,
+                lang=self.language,
+                config=configuration,
+                timeout=120,
             ).strip()
 
-            if not extracted_text:
+            if not ocr_text:
                 return OCRResult(
                     text=native_text,
                     extraction_method="native_text_fallback",
                     ocr_used=False,
                     warning=(
-                        "Tesseract completed OCR but did not "
-                        "detect readable text."
+                        "Tesseract ran successfully but did not "
+                        "detect readable text on this page."
                     ),
                 )
 
-            extraction_method = (
-                "full_page_ocr"
-                if full_page
-                else "native_text_and_image_ocr"
-            )
+            if combine_with_native:
+                final_text = self._merge_text(
+                    native_text=native_text,
+                    ocr_text=ocr_text,
+                )
+
+                extraction_method = (
+                    "native_text_and_tesseract_ocr"
+                )
+            else:
+                final_text = ocr_text
+                extraction_method = "full_page_tesseract_ocr"
 
             return OCRResult(
-                text=extracted_text,
+                text=final_text,
                 extraction_method=extraction_method,
                 ocr_used=True,
+            )
+
+        except RuntimeError as error:
+            return OCRResult(
+                text=native_text,
+                extraction_method="native_text_fallback",
+                ocr_used=False,
+                warning=(
+                    "OCR processing timed out or failed: "
+                    f"{error}"
+                ),
+            )
+
+        except pytesseract.pytesseract.TesseractNotFoundError:
+            return OCRResult(
+                text=native_text,
+                extraction_method="native_text_fallback",
+                ocr_used=False,
+                warning=(
+                    "The Tesseract command is not installed or "
+                    "is not available in PATH. Check packages.txt."
+                ),
             )
 
         except Exception as error:
@@ -166,128 +208,199 @@ class OCRService:
                 warning=f"OCR failed: {error}",
             )
 
-    @staticmethod
-    def _find_tessdata(
-        configured_path: Optional[str],
+    def _render_page(
+        self,
+        page: pymupdf.Page,
+    ) -> Image.Image:
+        """
+        Render a PDF page at the configured DPI and return a PIL image.
+        """
+        scale = self.dpi / 72.0
+
+        matrix = pymupdf.Matrix(
+            scale,
+            scale,
+        )
+
+        pixmap = page.get_pixmap(
+            matrix=matrix,
+            alpha=False,
+        )
+
+        image_bytes = pixmap.tobytes("png")
+
+        image = Image.open(
+            io.BytesIO(image_bytes)
+        ).convert("RGB")
+
+        return image
+
+    def _configure_tesseract_command(
+        self,
     ) -> Optional[str]:
         """
-        Find the directory containing Tesseract .traineddata files.
-
-        Search order:
-        1. Value supplied by settings.py
-        2. TESSDATA_PREFIX environment variable
-        3. PyMuPDF automatic detection
-        4. Common Windows and Linux locations
+        Locate Tesseract on Streamlit/Linux or Windows.
         """
-
-        candidates: list[Path] = []
-
-        if configured_path:
-            candidates.append(
-                Path(configured_path)
-            )
-
-        environment_path = os.getenv(
-            "TESSDATA_PREFIX",
+        environment_command = os.getenv(
+            "TESSERACT_CMD",
             "",
         ).strip()
 
-        if environment_path:
-            environment_candidate = Path(
-                environment_path
-            )
+        candidates = []
 
-            candidates.append(
-                environment_candidate
-            )
+        if environment_command:
+            candidates.append(environment_command)
 
-            # Some TESSDATA_PREFIX values point to the
-            # parent folder rather than directly to tessdata.
-            candidates.append(
-                environment_candidate / "tessdata"
+        detected_command = shutil.which("tesseract")
+
+        if detected_command:
+            candidates.append(detected_command)
+
+        candidates.extend(
+            [
+                "/usr/bin/tesseract",
+                "/usr/local/bin/tesseract",
+                (
+                    "C:/Program Files/"
+                    "Tesseract-OCR/tesseract.exe"
+                ),
+            ]
+        )
+
+        for candidate in candidates:
+            candidate_path = Path(candidate)
+
+            if candidate_path.is_file():
+                command = str(candidate_path)
+
+                pytesseract.pytesseract.tesseract_cmd = (
+                    command
+                )
+
+                return command
+
+        return None
+
+    def _check_tesseract(
+        self,
+    ) -> tuple[bool, str, list[str]]:
+        if not self.tesseract_command:
+            return (
+                False,
+                (
+                    "Tesseract executable was not found. "
+                    "Ensure packages.txt is at the GitHub "
+                    "repository root and contains "
+                    "tesseract-ocr and tesseract-ocr-eng."
+                ),
+                [],
             )
 
         try:
-            detected_path = pymupdf.get_tessdata()
+            pytesseract.get_tesseract_version()
 
-            if detected_path:
-                candidates.append(
-                    Path(detected_path)
-                )
-
-        except Exception:
-            pass
-
-        # Common Streamlit/Linux locations.
-        candidates.extend(
-            [
-                Path(
-                    "/usr/share/tesseract-ocr/"
-                    "5/tessdata"
-                ),
-                Path(
-                    "/usr/share/tesseract-ocr/"
-                    "4.00/tessdata"
-                ),
-                Path(
-                    "/usr/share/tesseract-ocr/"
-                    "tessdata"
-                ),
-                Path("/usr/share/tessdata"),
-                Path("/usr/local/share/tessdata"),
-            ]
-        )
-
-        # Common Windows location.
-        candidates.append(
-            Path(
-                "C:/Program Files/"
-                "Tesseract-OCR/tessdata"
-            )
-        )
-
-        linux_tesseract_root = Path(
-            "/usr/share/tesseract-ocr"
-        )
-
-        if linux_tesseract_root.exists():
-            candidates.extend(
-                linux_tesseract_root.glob(
-                    "*/tessdata"
-                )
+            languages = pytesseract.get_languages(
+                config=""
             )
 
-        checked_paths: set[str] = set()
-
-        for candidate in candidates:
-            normalized_path = str(candidate)
-
-            if normalized_path in checked_paths:
-                continue
-
-            checked_paths.add(normalized_path)
-
-            if not candidate.is_dir():
-                continue
-
-            required_language_files = [
-                language.strip()
-                for language in os.getenv(
-                    "OCR_LANGUAGE",
-                    "eng",
-                ).split("+")
-                if language.strip()
+            required_languages = [
+                item.strip()
+                for item in self.language.split("+")
+                if item.strip()
             ]
 
-            all_languages_available = all(
-                (
-                    candidate
-                    / f"{language}.traineddata"
-                ).exists()
-                for language in required_language_files
+            missing_languages = [
+                item
+                for item in required_languages
+                if item not in languages
+            ]
+
+            if missing_languages:
+                return (
+                    False,
+                    (
+                        "Tesseract is installed, but these OCR "
+                        "languages are missing: "
+                        + ", ".join(missing_languages)
+                    ),
+                    languages,
+                )
+
+            return (
+                True,
+                "Tesseract OCR is available.",
+                languages,
             )
 
-            if all_languages_available:
-                return str(candidate)
+        except Exception as error:
+            return (
+                False,
+                f"Tesseract validation failed: {error}",
+                [],
+            )
 
-        return None
+    @staticmethod
+    def _validate_tessdata_path(
+        tessdata_path: Optional[str],
+    ) -> Optional[str]:
+        """
+        Ignore invalid paths such as a Windows path on Linux deployment.
+        """
+        if not tessdata_path:
+            return None
+
+        path = Path(tessdata_path)
+
+        if not path.is_dir():
+            return None
+
+        return str(path)
+
+    @staticmethod
+    def _merge_text(
+        native_text: str,
+        ocr_text: str,
+    ) -> str:
+        """
+        Avoid adding completely duplicated OCR text.
+        """
+        if not native_text:
+            return ocr_text
+
+        normalized_native = re.sub(
+            r"\s+",
+            " ",
+            native_text,
+        ).strip().lower()
+
+        normalized_ocr = re.sub(
+            r"\s+",
+            " ",
+            ocr_text,
+        ).strip().lower()
+
+        if normalized_ocr in normalized_native:
+            return native_text
+
+        if normalized_native in normalized_ocr:
+            return ocr_text
+
+        return (
+            native_text
+            + "\n\n"
+            + ocr_text
+        )
+
+    def get_status(self) -> dict[str, object]:
+        """
+        Return safe deployment diagnostics.
+        """
+        return {
+            "available": self.ocr_available,
+            "command": self.tesseract_command,
+            "language": self.language,
+            "available_languages": (
+                self.available_languages
+            ),
+            "message": self.ocr_status_message,
+        }
