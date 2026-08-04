@@ -9,7 +9,6 @@ from typing import Optional
 import pymupdf
 import pytesseract
 from PIL import Image
-from pytesseract import TesseractNotFoundError
 
 
 @dataclass
@@ -22,17 +21,13 @@ class OCRResult:
 
 class OCRService:
     """
-    OCR service for digital, scanned and mixed-content PDF pages.
+    Extract text from digital, scanned, and mixed-content PDF pages.
 
-    PyMuPDF renders the PDF page as an image.
-    Pytesseract sends that image to the installed Tesseract command.
+    PyMuPDF renders PDF pages as images, and pytesseract sends those
+    images to the installed Tesseract OCR executable.
     """
 
-    VALID_MODES = {
-        "auto",
-        "always",
-        "off",
-    }
+    VALID_MODES = {"auto", "always", "off"}
 
     def __init__(
         self,
@@ -41,16 +36,25 @@ class OCRService:
         minimum_native_characters: int = 80,
         tessdata_path: Optional[str] = None,
     ) -> None:
+        language = language.strip()
+
+        if not language:
+            raise ValueError("OCR language cannot be empty.")
+
+        if dpi < 72:
+            raise ValueError("OCR DPI must be at least 72.")
+
+        if minimum_native_characters < 0:
+            raise ValueError(
+                "Minimum native character count cannot be negative."
+            )
+
         self.language = language
         self.dpi = dpi
-        self.minimum_native_characters = (
-            minimum_native_characters
-        )
-
+        self.minimum_native_characters = minimum_native_characters
         self.tessdata_path = self._validate_tessdata_path(
             tessdata_path
         )
-
         self.tesseract_command = (
             self._configure_tesseract_command()
         )
@@ -66,11 +70,19 @@ class OCRService:
         page: pymupdf.Page,
         mode: str = "auto",
     ) -> OCRResult:
+        """
+        Extract text from a PDF page.
+
+        Modes:
+        - off: use only native selectable PDF text
+        - always: perform full-page OCR
+        - auto: use native text when sufficient, otherwise use OCR
+        """
         mode = mode.lower().strip()
 
         if mode not in self.VALID_MODES:
             raise ValueError(
-                "OCR mode must be auto, always or off."
+                "OCR mode must be auto, always, or off."
             )
 
         native_text = page.get_text(
@@ -92,18 +104,15 @@ class OCRService:
                 combine_with_native=False,
             )
 
-        # A page with very little selectable text is probably scanned.
-        if (
-            len(native_text)
-            < self.minimum_native_characters
-        ):
+        # A page containing little selectable text is probably scanned.
+        if len(native_text) < self.minimum_native_characters:
             return self._perform_ocr(
                 page=page,
                 native_text=native_text,
                 combine_with_native=False,
             )
 
-        # A mixed page may contain selectable text and images with text.
+        # A mixed page may contain native text and images with text.
         if page.get_images(full=True):
             return self._perform_ocr(
                 page=page,
@@ -133,7 +142,6 @@ class OCRService:
 
         try:
             page_image = self._render_page(page)
-
             configuration = "--oem 3 --psm 3"
 
             if self.tessdata_path:
@@ -164,7 +172,6 @@ class OCRService:
                     native_text=native_text,
                     ocr_text=ocr_text,
                 )
-
                 extraction_method = (
                     "native_text_and_tesseract_ocr"
                 )
@@ -178,6 +185,17 @@ class OCRService:
                 ocr_used=True,
             )
 
+        except pytesseract.pytesseract.TesseractNotFoundError:
+            return OCRResult(
+                text=native_text,
+                extraction_method="native_text_fallback",
+                ocr_used=False,
+                warning=(
+                    "Tesseract is not installed or is not available "
+                    "in PATH. Check packages.txt on deployment."
+                ),
+            )
+
         except RuntimeError as error:
             return OCRResult(
                 text=native_text,
@@ -186,17 +204,6 @@ class OCRService:
                 warning=(
                     "OCR processing timed out or failed: "
                     f"{error}"
-                ),
-            )
-
-        except pytesseract.pytesseract.TesseractNotFoundError:
-            return OCRResult(
-                text=native_text,
-                extraction_method="native_text_fallback",
-                ocr_used=False,
-                warning=(
-                    "The Tesseract command is not installed or "
-                    "is not available in PATH. Check packages.txt."
                 ),
             )
 
@@ -213,14 +220,10 @@ class OCRService:
         page: pymupdf.Page,
     ) -> Image.Image:
         """
-        Render a PDF page at the configured DPI and return a PIL image.
+        Render the page at the configured DPI and return an RGB image.
         """
         scale = self.dpi / 72.0
-
-        matrix = pymupdf.Matrix(
-            scale,
-            scale,
-        )
+        matrix = pymupdf.Matrix(scale, scale)
 
         pixmap = page.get_pixmap(
             matrix=matrix,
@@ -229,30 +232,26 @@ class OCRService:
 
         image_bytes = pixmap.tobytes("png")
 
-        image = Image.open(
-            io.BytesIO(image_bytes)
-        ).convert("RGB")
-
-        return image
+        with Image.open(io.BytesIO(image_bytes)) as image:
+            return image.convert("RGB")
 
     def _configure_tesseract_command(
         self,
     ) -> Optional[str]:
         """
-        Locate Tesseract on Streamlit/Linux or Windows.
+        Find the Tesseract executable on Linux or Windows.
         """
         environment_command = os.getenv(
             "TESSERACT_CMD",
             "",
-        ).strip()
+        ).strip().strip('"')
 
-        candidates = []
+        candidates: list[str] = []
 
         if environment_command:
             candidates.append(environment_command)
 
         detected_command = shutil.which("tesseract")
-
         if detected_command:
             candidates.append(detected_command)
 
@@ -264,6 +263,10 @@ class OCRService:
                     "C:/Program Files/"
                     "Tesseract-OCR/tesseract.exe"
                 ),
+                (
+                    "C:/Program Files (x86)/"
+                    "Tesseract-OCR/tesseract.exe"
+                ),
             ]
         )
 
@@ -272,11 +275,7 @@ class OCRService:
 
             if candidate_path.is_file():
                 command = str(candidate_path)
-
-                pytesseract.pytesseract.tesseract_cmd = (
-                    command
-                )
-
+                pytesseract.pytesseract.tesseract_cmd = command
                 return command
 
         return None
@@ -284,24 +283,24 @@ class OCRService:
     def _check_tesseract(
         self,
     ) -> tuple[bool, str, list[str]]:
+        """
+        Verify that Tesseract and the requested languages are available.
+        """
         if not self.tesseract_command:
             return (
                 False,
                 (
-                    "Tesseract executable was not found. "
-                    "Ensure packages.txt is at the GitHub "
-                    "repository root and contains "
-                    "tesseract-ocr and tesseract-ocr-eng."
+                    "Tesseract executable was not found. Ensure "
+                    "packages.txt is at the GitHub repository root "
+                    "and contains tesseract-ocr and "
+                    "tesseract-ocr-eng."
                 ),
                 [],
             )
 
         try:
             pytesseract.get_tesseract_version()
-
-            languages = pytesseract.get_languages(
-                config=""
-            )
+            languages = pytesseract.get_languages(config="")
 
             required_languages = [
                 item.strip()
@@ -332,6 +331,16 @@ class OCRService:
                 languages,
             )
 
+        except pytesseract.pytesseract.TesseractNotFoundError:
+            return (
+                False,
+                (
+                    "Tesseract is not installed or is not "
+                    "available in PATH."
+                ),
+                [],
+            )
+
         except Exception as error:
             return (
                 False,
@@ -344,12 +353,13 @@ class OCRService:
         tessdata_path: Optional[str],
     ) -> Optional[str]:
         """
-        Ignore invalid paths such as a Windows path on Linux deployment.
+        Use the configured tessdata folder only when it exists.
         """
         if not tessdata_path:
             return None
 
-        path = Path(tessdata_path)
+        cleaned_path = tessdata_path.strip().strip('"')
+        path = Path(cleaned_path)
 
         if not path.is_dir():
             return None
@@ -362,7 +372,7 @@ class OCRService:
         ocr_text: str,
     ) -> str:
         """
-        Avoid adding completely duplicated OCR text.
+        Combine native and OCR text while avoiding full duplication.
         """
         if not native_text:
             return ocr_text
@@ -385,22 +395,4 @@ class OCRService:
         if normalized_native in normalized_ocr:
             return ocr_text
 
-        return (
-            native_text
-            + "\n\n"
-            + ocr_text
-        )
-
-    def get_status(self) -> dict[str, object]:
-        """
-        Return safe deployment diagnostics.
-        """
-        return {
-            "available": self.ocr_available,
-            "command": self.tesseract_command,
-            "language": self.language,
-            "available_languages": (
-                self.available_languages
-            ),
-            "message": self.ocr_status_message,
-        }
+        return f"{native_text}\n\n{ocr_text}"
