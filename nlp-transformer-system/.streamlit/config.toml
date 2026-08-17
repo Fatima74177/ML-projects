@@ -1,0 +1,11 @@
+[server]
+# Safe defaults for local development and Community Cloud.
+runOnSave = false
+headless = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1f77b4"
+base = "light"
