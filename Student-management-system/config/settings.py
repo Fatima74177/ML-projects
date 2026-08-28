@@ -28,7 +28,7 @@ DEBUG = True
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    'ml-projects-45hkfcvvo-fatima-zahra6.vercel.app',
+    '.vercel.app',
 ]
 
 
