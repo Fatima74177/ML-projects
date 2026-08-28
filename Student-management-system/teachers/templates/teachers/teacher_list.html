@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Teachers</h1>
+    <p class="page-subtitle">Manage teaching staff and department assignments.</p>
+  </div>
+  {% if user.profile.role == 'administrator' %}
+  <a class="btn btn-primary" href="{% url 'teacher_add' %}">Add teacher</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Name</th><th>ID</th><th>Email</th><th>Department</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for teacher in teachers %}
+        <tr>
+          <td>{{ teacher.full_name }}</td>
+          <td>{{ teacher.teacher_id }}</td>
+          <td>{{ teacher.email }}</td>
+          <td>{{ teacher.department }}</td>
+          <td>
+            <a href="{% url 'teacher_detail' teacher.pk %}">View</a> |
+            {% if user.profile.role == 'administrator' %}
+            <a href="{% url 'teacher_update' teacher.pk %}">Edit</a> |
+            <a href="{% url 'teacher_delete' teacher.pk %}">Delete</a>
+            {% else %}
+            <span class="text-muted">Read only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No teachers found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

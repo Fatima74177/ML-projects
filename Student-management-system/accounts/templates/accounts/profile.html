@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Profile | Student Management System{% endblock %}
+{% block content %}
+<div class="profile-hero">
+  <div class="profile-avatar">{{ user.username|first|upper }}</div>
+  <div>
+    <span class="eyebrow">Account Profile</span>
+    <h1 class="page-title">{{ user.get_full_name|default:user.username }}</h1>
+    <p class="page-subtitle">{{ profile.get_role_display }} workspace access</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="profile-card">
+      <i class="bi bi-envelope"></i>
+      <span>Email</span>
+      <strong>{{ user.email|default:"-" }}</strong>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="profile-card">
+      <i class="bi bi-person-badge"></i>
+      <span>Username</span>
+      <strong>{{ user.username }}</strong>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="profile-card">
+      <i class="bi bi-shield-check"></i>
+      <span>Role</span>
+      <strong>{{ profile.get_role_display }}</strong>
+    </div>
+  </div>
+</div>
+
+<div class="panel mt-4">
+  <div class="panel-heading">
+    <h3 class="panel-title">Contact Details</h3>
+    <span class="text-muted small">Stored profile information</span>
+  </div>
+  <div class="profile-details">
+    <div>
+      <span>Phone</span>
+      <strong>{{ profile.phone|default:"Not added" }}</strong>
+    </div>
+    <div>
+      <span>Address</span>
+      <strong>{{ profile.address|default:"Not added" }}</strong>
+    </div>
+    <div>
+      <span>Full Name</span>
+      <strong>{{ user.get_full_name|default:"Not added" }}</strong>
+    </div>
+  </div>
+</div>
+{% endblock %}

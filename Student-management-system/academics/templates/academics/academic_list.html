@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Marks & Grades</h1>
+    <p class="page-subtitle">Manage results and grade entries.</p>
+  </div>
+  {% if user.profile.role == 'administrator' or user.profile.role == 'teacher' %}
+  <a class="btn btn-primary" href="{% url 'academic_add' %}">Add grade</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Student</th><th>Course</th><th>Exam</th><th>Marks</th><th>Grade</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for grade in grades %}
+        <tr>
+          <td>{{ grade.student.full_name }}</td>
+          <td>{{ grade.course.title }}</td>
+          <td>{{ grade.exam_name }}</td>
+          <td>{{ grade.marks }}</td>
+          <td>{{ grade.grade }}</td>
+          <td>
+            <a href="{% url 'academic_detail' grade.pk %}">View</a> |
+            {% if user.profile.role == 'administrator' or user.profile.role == 'teacher' %}
+            <a href="{% url 'academic_update' grade.pk %}">Edit</a> |
+            <a href="{% url 'academic_delete' grade.pk %}">Delete</a>
+            {% else %}
+            <span class="text-muted">Read only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No grades found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

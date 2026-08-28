@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card-shell">
+  <h1 class="page-title">Delete Course</h1>
+  <form method="post">
+    {% csrf_token %}
+    <p>Delete {{ object.title }}?</p>
+    <button class="btn btn-danger" type="submit">Delete</button>
+    <a class="btn btn-light" href="{% url 'course_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

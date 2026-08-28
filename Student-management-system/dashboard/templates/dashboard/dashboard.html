@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard | Student Management System{% endblock %}
+{% block content %}
+{% load static %}
+<div class="page-header compact-header">
+  <div>
+    <span class="eyebrow">{{ role }} dashboard</span>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">A short summary of your academic workspace.</p>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  {% if role == 'administrator' or role == 'teacher' %}
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card"><div><div class="stat-label">Students</div><div class="stat-number">{{ students_count }}</div></div><div class="stat-icon blue"><i class="bi bi-people-fill"></i></div></div>
+  </div>
+  {% endif %}
+  {% if role == 'administrator' %}
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card"><div><div class="stat-label">Teachers</div><div class="stat-number">{{ teachers_count }}</div></div><div class="stat-icon green"><i class="bi bi-person-workspace"></i></div></div>
+  </div>
+  {% endif %}
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card"><div><div class="stat-label">Courses</div><div class="stat-number">{{ courses_count }}</div></div><div class="stat-icon purple"><i class="bi bi-journal-bookmark-fill"></i></div></div>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <div class="stat-card"><div><div class="stat-label">Attendance</div><div class="stat-number">{{ attendance_count }}</div></div><div class="stat-icon orange"><i class="bi bi-calendar2-check-fill"></i></div></div>
+  </div>
+</div>
+
+<div class="summary-grid dashboard-actions mb-4">
+  <a class="summary-action dashboard-action-card" href="{% url 'course_list' %}">
+    <i class="bi bi-journal-bookmark-fill"></i>
+    <span>View Courses</span>
+  </a>
+  <a class="summary-action dashboard-action-card" href="{% url 'attendance_list' %}">
+    <i class="bi bi-calendar2-check-fill"></i>
+    <span>View Attendance</span>
+  </a>
+  <a class="summary-action dashboard-action-card" href="{% url 'academic_list' %}">
+    <i class="bi bi-bar-chart-line-fill"></i>
+    <span>View Grades</span>
+  </a>
+  {% if role == 'administrator' or role == 'teacher' %}
+  <a class="summary-action dashboard-action-card" href="{% url 'student_list' %}">
+    <i class="bi bi-people-fill"></i>
+    <span>View Students</span>
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="panel performance-panel small-performance">
+      <div class="circle-progress" style="--value: {{ attendance_percentage }};"><span>{{ attendance_percentage }}%</span></div>
+      <div>
+        <h3 class="panel-title">Attendance</h3>
+        <p class="page-subtitle">Present rate</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="panel performance-panel small-performance">
+      <div class="circle-progress marks" style="--value: {{ average_marks }};"><span>{{ average_marks }}%</span></div>
+      <div>
+        <h3 class="panel-title">Performance</h3>
+        <p class="page-subtitle">Average marks</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="panel performance-panel small-performance">
+      <div class="circle-progress pass" style="--value: {{ passing_percentage }};"><span>{{ passing_percentage }}%</span></div>
+      <div>
+        <h3 class="panel-title">Pass Rate</h3>
+        <p class="page-subtitle">Passing grades</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ react_dashboard_data|json_script:"react-dashboard-data" }}
+<div class="panel mt-4 compact-react-panel">
+  <div class="panel-heading">
+    <h3 class="panel-title">React Snapshot</h3>
+    <span class="text-muted small">Quick interactive summary</span>
+  </div>
+  <div id="react-dashboard-root"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'react/dashboard-react.css' %}">
+<script type="module" src="{% static 'react/dashboard-react.js' %}"></script>
+{% endblock %}
