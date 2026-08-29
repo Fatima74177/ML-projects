@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Home | Student Management System{% endblock %}
+{% block content %}
+<div class="card-shell">
+  <h1 class="page-title">Welcome</h1>
+  <p class="page-subtitle">Use the dashboard to manage students, teachers, courses, attendance, and grades.</p>
+  <a class="btn btn-primary" href="{% url 'dashboard' %}">Go to dashboard</a>
+</div>
+{% endblock %}

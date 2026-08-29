@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card-shell">
+  <h1 class="page-title">{{ object.full_name }}</h1>
+  <p class="page-subtitle">{{ object.student_id }} | {{ object.program }}</p>
+  <p><strong>Email:</strong> {{ object.email }}</p>
+  <p><strong>Year:</strong> {{ object.year }}</p>
+  <p><strong>Status:</strong> {{ object.get_status_display }}</p>
+  <a class="btn btn-light" href="{% url 'student_list' %}">Back</a>
+</div>
+{% endblock %}

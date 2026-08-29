@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Attendance</h1>
+    <p class="page-subtitle">Daily attendance tracking for enrolled students.</p>
+  </div>
+  {% if user.profile.role == 'administrator' or user.profile.role == 'teacher' %}
+  <a class="btn btn-primary" href="{% url 'attendance_add' %}">Add record</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Date</th><th>Student</th><th>Course</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for record in attendance_records %}
+        <tr>
+          <td>{{ record.attendance_date }}</td>
+          <td>{{ record.student.full_name }}</td>
+          <td>{{ record.course.title }}</td>
+          <td>{{ record.get_status_display }}</td>
+          <td>
+            <a href="{% url 'attendance_detail' record.pk %}">View</a> |
+            {% if user.profile.role == 'administrator' or user.profile.role == 'teacher' %}
+            <a href="{% url 'attendance_update' record.pk %}">Edit</a> |
+            <a href="{% url 'attendance_delete' record.pk %}">Delete</a>
+            {% else %}
+            <span class="text-muted">Read only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No attendance records yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

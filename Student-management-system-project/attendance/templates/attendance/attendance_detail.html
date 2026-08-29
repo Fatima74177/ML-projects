@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card-shell">
+  <h1 class="page-title">Attendance Record</h1>
+  <p><strong>Date:</strong> {{ object.attendance_date }}</p>
+  <p><strong>Student:</strong> {{ object.student.full_name }}</p>
+  <p><strong>Course:</strong> {{ object.course.title }}</p>
+  <p><strong>Status:</strong> {{ object.get_status_display }}</p>
+  <a class="btn btn-light" href="{% url 'attendance_list' %}">Back</a>
+</div>
+{% endblock %}

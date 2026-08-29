@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+db.sqlite3
+staticfiles/
+media/
+__pycache__/
+*.pyc
+frontend/node_modules/
+frontend/dist/
+node_modules/
+.git/
+.venv/
+venv/
+db/schema.sql

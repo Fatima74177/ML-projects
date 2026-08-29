@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Courses</h1>
+    <p class="page-subtitle">Create and manage academic courses.</p>
+  </div>
+  {% if user.profile.role == 'administrator' %}
+  <a class="btn btn-primary" href="{% url 'course_add' %}">Add course</a>
+  {% endif %}
+</div>
+<div class="panel">
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Code</th><th>Title</th><th>Teacher</th><th>Schedule</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for course in courses %}
+        <tr>
+          <td>{{ course.course_code }}</td>
+          <td>{{ course.title }}</td>
+          <td>{{ course.teacher|default:"-" }}</td>
+          <td>{{ course.schedule }}</td>
+          <td>
+            <a href="{% url 'course_detail' course.pk %}">View</a> |
+            {% if user.profile.role == 'administrator' %}
+            <a href="{% url 'course_update' course.pk %}">Edit</a> |
+            <a href="{% url 'course_delete' course.pk %}">Delete</a>
+            {% else %}
+            <span class="text-muted">Read only</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No courses found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
