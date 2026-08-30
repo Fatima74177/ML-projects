@@ -5,7 +5,7 @@
     <h1 class="page-title">Teachers</h1>
     <p class="page-subtitle">Manage teaching staff and department assignments.</p>
   </div>
-  {% if user.profile.role == 'administrator' %}
+  {% if user.is_superuser or user.profile.role == 'administrator' %}
   <a class="btn btn-primary" href="{% url 'teacher_add' %}">Add teacher</a>
   {% endif %}
 </div>
@@ -22,7 +22,7 @@
           <td>{{ teacher.department }}</td>
           <td>
             <a href="{% url 'teacher_detail' teacher.pk %}">View</a> |
-            {% if user.profile.role == 'administrator' %}
+            {% if user.is_superuser or user.profile.role == 'administrator' %}
             <a href="{% url 'teacher_update' teacher.pk %}">Edit</a> |
             <a href="{% url 'teacher_delete' teacher.pk %}">Delete</a>
             {% else %}

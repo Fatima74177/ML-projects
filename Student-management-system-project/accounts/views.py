@@ -12,7 +12,12 @@ def register(request):
         form = RegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            Profile.objects.create(user=user, role=form.cleaned_data['role'])
+            # The user signal creates the default profile; registration sets
+            # its explicitly selected, non-administrator role.
+            Profile.objects.update_or_create(
+                user=user,
+                defaults={'role': form.cleaned_data['role']},
+            )
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             messages.success(request, 'Account created successfully.')
             return redirect('dashboard')
@@ -23,5 +28,8 @@ def register(request):
 
 @login_required
 def profile(request):
-    profile, _ = Profile.objects.get_or_create(user=request.user)
+    profile, _ = Profile.objects.get_or_create(
+        user=request.user,
+        defaults={'role': 'administrator' if request.user.is_superuser else 'student'},
+    )
     return render(request, 'accounts/profile.html', {'profile': profile})

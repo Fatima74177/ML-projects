@@ -2,7 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.views.generic import CreateView, DeleteView, DetailView, ListView, UpdateView
 
-from accounts.mixins import RoleRequiredMixin
+from accounts.mixins import RoleRequiredMixin, TeacherCourseScopedMixin
 from .forms import GradeForm
 from .models import Grade
 
@@ -37,21 +37,21 @@ class GradeDetailView(LoginRequiredMixin, DetailView):
         return queryset
 
 
-class GradeCreateView(RoleRequiredMixin, CreateView):
+class GradeCreateView(RoleRequiredMixin, TeacherCourseScopedMixin, CreateView):
     allowed_roles = ('administrator', 'teacher')
     model = Grade
     form_class = GradeForm
     template_name = 'academics/academic_form.html'
 
 
-class GradeUpdateView(RoleRequiredMixin, UpdateView):
+class GradeUpdateView(RoleRequiredMixin, TeacherCourseScopedMixin, UpdateView):
     allowed_roles = ('administrator', 'teacher')
     model = Grade
     form_class = GradeForm
     template_name = 'academics/academic_form.html'
 
 
-class GradeDeleteView(RoleRequiredMixin, DeleteView):
+class GradeDeleteView(RoleRequiredMixin, TeacherCourseScopedMixin, DeleteView):
     allowed_roles = ('administrator', 'teacher')
     model = Grade
     template_name = 'academics/academic_delete.html'

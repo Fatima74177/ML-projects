@@ -22,10 +22,10 @@
       <nav class="nav flex-column">
         {% with role=user.profile.role %}
         <a class="nav-link" href="{% url 'dashboard' %}"><i class="bi bi-grid-1x2-fill"></i>Dashboard</a>
-        {% if role == 'administrator' or role == 'teacher' %}
+        {% if user.is_superuser or role == 'administrator' or role == 'teacher' %}
         <a class="nav-link" href="{% url 'student_list' %}"><i class="bi bi-people-fill"></i>Students</a>
         {% endif %}
-        {% if role == 'administrator' %}
+        {% if user.is_superuser or role == 'administrator' %}
         <a class="nav-link" href="{% url 'teacher_list' %}"><i class="bi bi-person-workspace"></i>Teachers</a>
         {% endif %}
         <a class="nav-link" href="{% url 'course_list' %}"><i class="bi bi-journal-bookmark-fill"></i>Courses</a>
