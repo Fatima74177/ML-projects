@@ -1,6 +1,7 @@
-from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 from django import forms
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
+
 
 from .models import Profile
 
@@ -57,3 +58,9 @@ class RegistrationForm(UserCreationForm):
         for name, field in self.fields.items():
             field.widget.attrs.setdefault('class', 'form-control')
             field.widget.attrs.setdefault('placeholder', placeholders.get(name, field.label))
+
+class StyledPasswordChangeForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
