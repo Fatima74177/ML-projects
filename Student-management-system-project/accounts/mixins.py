@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import redirect
 
 from courses.models import Course
+from .signals import synchronize_profile_role
 
 
 class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -11,7 +12,9 @@ class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         if self.request.user.is_superuser:
             return True
-        profile = getattr(self.request.user, 'profile', None)
+        # Recheck old accounts before authorization, so a teacher account
+        # linked to a Teacher record can open the attendance portal.
+        profile = synchronize_profile_role(self.request.user)
         return bool(profile and profile.role in self.allowed_roles)
 
     def handle_no_permission(self):
