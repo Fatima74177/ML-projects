@@ -6,7 +6,7 @@
     <h1 class="page-title">Students</h1>
     <p class="page-subtitle">Manage student profiles and academic information.</p>
   </div>
-  {% if user.is_superuser or user.profile.role == 'administrator' or user.profile.role == 'teacher' %}
+  {% if user.is_superuser or user.profile.role == 'administrator' %}
   <a class="btn btn-primary" href="{% url 'student_add' %}">Add student</a>
   {% endif %}
 </div>

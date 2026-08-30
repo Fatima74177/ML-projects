@@ -5,6 +5,8 @@ from django.shortcuts import redirect, render
 
 from .forms import RegistrationForm
 from .models import Profile
+from .signals import synchronize_profile_role
+from students.models import Student
 
 
 def register(request):
@@ -18,6 +20,17 @@ def register(request):
                 user=user,
                 defaults={'role': form.cleaned_data['role']},
             )
+            if form.cleaned_data['role'] == 'student':
+                Student.objects.get_or_create(
+                    email=user.email,
+                    defaults={
+                        'student_id': f'ST-{user.pk:05d}',
+                        'full_name': user.get_full_name() or user.username,
+                        'program': 'Not assigned',
+                        'year': 'Not assigned',
+                        'status': 'active',
+                    },
+                )
             login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             messages.success(request, 'Account created successfully.')
             return redirect('dashboard')
@@ -28,8 +41,5 @@ def register(request):
 
 @login_required
 def profile(request):
-    profile, _ = Profile.objects.get_or_create(
-        user=request.user,
-        defaults={'role': 'administrator' if request.user.is_superuser else 'student'},
-    )
+    profile = synchronize_profile_role(request.user)
     return render(request, 'accounts/profile.html', {'profile': profile})

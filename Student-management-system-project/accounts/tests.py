@@ -22,8 +22,6 @@ class RoleAccessTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser('admin', 'admin@example.com', 'admin-password')
         self.teacher_user = User.objects.create_user('teacher', 'teacher@example.com', 'teacher-password')
-        self.teacher_user.profile.role = 'teacher'
-        self.teacher_user.profile.save(update_fields=['role'])
 
         self.other_teacher = Teacher.objects.create(
             teacher_id='T-2', full_name='Other Teacher', email='other@example.com', department='Science'
@@ -46,6 +44,11 @@ class RoleAccessTests(TestCase):
     def test_superuser_gets_administrator_profile_by_default(self):
         self.assertEqual(self.admin.profile.role, 'administrator')
 
+    def test_teacher_account_is_corrected_from_its_teacher_record_on_login(self):
+        self.client.force_login(self.teacher_user)
+        self.teacher_user.profile.refresh_from_db()
+        self.assertEqual(self.teacher_user.profile.role, 'teacher')
+
     def test_teacher_cannot_edit_or_delete_another_teachers_records(self):
         self.client.force_login(self.teacher_user)
         for name, record in (
@@ -63,7 +66,23 @@ class RoleAccessTests(TestCase):
         courses = response.context['form'].fields['course'].queryset
         self.assertQuerySetEqual(courses, [self.own_course], ordered=False)
 
-    def test_teacher_can_add_students_but_cannot_edit_them(self):
+    def test_teacher_cannot_manage_student_profiles(self):
         self.client.force_login(self.teacher_user)
-        self.assertEqual(self.client.get(reverse('student_add')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('student_add')).status_code, 302)
         self.assertEqual(self.client.get(reverse('student_update', args=[self.student.pk])).status_code, 302)
+
+    def test_student_registration_creates_a_matching_student_record(self):
+        response = self.client.post(
+            reverse('register'),
+            {
+                'username': 'new-student',
+                'first_name': 'New',
+                'last_name': 'Student',
+                'email': 'new.student@example.com',
+                'password1': 'Secure-pass-123',
+                'password2': 'Secure-pass-123',
+                'role': 'student',
+            },
+        )
+        self.assertRedirects(response, reverse('dashboard'))
+        self.assertTrue(Student.objects.filter(email='new.student@example.com').exists())
