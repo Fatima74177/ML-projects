@@ -651,6 +651,38 @@ body {
   box-shadow: 0 0 0 0.2rem rgba(17, 103, 177, 0.12);
 }
 
+.app-form {
+  max-width: 760px;
+}
+
+.app-form p {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.app-form label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.app-form .form-control,
+.app-form .form-select {
+  width: 100%;
+  min-height: 46px;
+}
+
+.app-form textarea.form-control {
+  min-height: 110px;
+}
+
+.app-form ul.errorlist {
+  color: var(--danger);
+  font-size: 0.9rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
 .btn {
   border-radius: 8px;
   font-weight: 800;
@@ -910,6 +942,54 @@ body {
 }
 
 @media (max-width: 576px) {
+  .main-content {
+    padding: 12px;
+  }
+
+  .app-navbar {
+    min-height: auto;
+    padding: 14px;
+  }
+
+  .navbar-icon,
+  .navbar-kicker {
+    display: none;
+  }
+
+  .navbar-title strong {
+    font-size: 1rem;
+  }
+
+  .top-actions {
+    gap: 8px;
+  }
+
+  .profile-menu {
+    padding-right: 8px;
+  }
+
+  .profile-menu small {
+    max-width: 120px;
+  }
+
+  .panel,
+  .card-shell,
+  .profile-hero {
+    padding: 16px;
+  }
+
+  .page-header .btn,
+  .app-form .btn {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .table td,
+  .table th {
+    padding: 11px 10px;
+    white-space: nowrap;
+  }
+
   .landing-nav-actions .btn {
     padding: 8px 14px;
     font-size: 0.9rem;
