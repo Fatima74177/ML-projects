@@ -3,7 +3,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import redirect
 
 from courses.models import Course
-from .signals import synchronize_profile_role
 
 
 class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -12,10 +11,7 @@ class RoleRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
     def test_func(self):
         if self.request.user.is_superuser:
             return True
-        # Correct an older account before checking its role.  This lets a
-        # teacher whose email is linked to a Teacher record access attendance
-        # even if the stored profile previously said "student".
-        profile = synchronize_profile_role(self.request.user)
+        profile = getattr(self.request.user, 'profile', None)
         return bool(profile and profile.role in self.allowed_roles)
 
     def handle_no_permission(self):
