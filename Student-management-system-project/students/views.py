@@ -28,7 +28,7 @@ class StudentDetailView(LoginRequiredMixin, DetailView):
 
 
 class StudentCreateView(RoleRequiredMixin, CreateView):
-    allowed_roles = ('administrator',)
+    allowed_roles = ('administrator', 'teacher')
     model = Student
     form_class = StudentForm
     template_name = 'students/student_form.html'

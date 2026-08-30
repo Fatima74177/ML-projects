@@ -62,3 +62,8 @@ class RoleAccessTests(TestCase):
         response = self.client.get(reverse('attendance_add'))
         courses = response.context['form'].fields['course'].queryset
         self.assertQuerySetEqual(courses, [self.own_course], ordered=False)
+
+    def test_teacher_can_add_students_but_cannot_edit_them(self):
+        self.client.force_login(self.teacher_user)
+        self.assertEqual(self.client.get(reverse('student_add')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('student_update', args=[self.student.pk])).status_code, 302)
