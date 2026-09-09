@@ -1,0 +1,90 @@
+.analysis {
+  margin-top: 84px;
+}
+
+.analysis .section-heading {
+  margin-bottom: 28px;
+}
+
+.analysis .section-heading h2 {
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  letter-spacing: -0.02em;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.chart-card {
+  position: relative;
+  min-height: 350px;
+  padding: 24px 24px 20px;
+  overflow: hidden;
+  border: 1px solid #d9ddd9;
+  border-radius: 6px;
+  background: #fbfaf7;
+  box-shadow: 0 10px 24px rgba(24, 35, 43, 0.045);
+}
+
+.chart-card::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 3px;
+  margin-bottom: 20px;
+  background: #ef7157;
+}
+
+.chart-card h3 {
+  margin-bottom: 20px;
+  color: #18232b;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.chart-card canvas {
+  display: block;
+  width: 100% !important;
+  height: 255px !important;
+}
+
+.chart-card.wide {
+  min-height: 390px;
+}
+
+.chart-card.wide canvas {
+  height: 295px !important;
+}
+
+@media (max-width: 900px) {
+  .charts {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card,
+  .chart-card.wide {
+    min-height: 340px;
+  }
+
+  .chart-card.wide canvas,
+  .chart-card canvas {
+    height: 255px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .analysis {
+    margin-top: 58px;
+  }
+
+  .chart-card {
+    padding: 20px 16px 16px;
+  }
+
+  .chart-card canvas,
+  .chart-card.wide canvas {
+    height: 230px !important;
+  }
+}

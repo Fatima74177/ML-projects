@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product Observatory</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='charts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='chart-scroll.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar"><div><span class="eyebrow">E-COMMERCE INTELLIGENCE</span><h1>Product Observatory</h1></div><span id="connection" class="status-dot">READY</span></header>
+  <main>
+    <section class="hero-grid">
+      <div class="intro"><p class="kicker">SCRAPE / CLEAN / UNDERSTAND</p><h2>Turn storefront pages into decisions.</h2><p class="lede">Configure a crawl, watch it work, then explore a clean product dataset with analysis built in.</p></div>
+      <form id="scrape-form" class="control-panel">
+        <label>Starting URL<input id="url" type="url" value="{{ default_url }}" required></label>
+        <div class="two-col"><label>Pages<input id="max-pages" type="number" value="5" min="1" max="100"></label><label>Delay (seconds)<input id="delay" type="number" value="1" min="0" max="60" step="0.1"></label></div>
+        <details class="advanced-config"><summary>Custom site selectors</summary><p>Use CSS selectors when the website has no product JSON-LD data.</p><div class="selector-grid"><label>Product card<input id="card-selector" value="article.product_pod"></label><label>Product name<input id="name-selector" value="h3 a"></label><label>Price<input id="price-selector" value=".price_color"></label><label>Rating<input id="rating-selector" value="p.star-rating"></label><label>Availability<input id="availability-selector" value=".availability"></label><label>Next page<input id="next-selector" value="li.next a"></label></div></details>
+        <button type="submit" id="start">Start scraping <span>-></span></button><p id="form-message" class="form-message"></p>
+      </form>
+    </section>
+
+    <section class="metrics" id="metrics"></section>
+    <section class="workspace">
+      <div class="section-heading"><div><span class="eyebrow">LIVE DATASET</span><h2>Products</h2></div><div class="exports"><a href="/download/csv">Download CSV</a><a href="/download/excel">Download Excel</a></div></div>
+      <div class="filters"><input id="search" placeholder="Search product names..."><select id="category"><option value="">All categories</option></select><input id="min-price" type="number" min="0" placeholder="Min price"><input id="max-price" type="number" min="0" placeholder="Max price"><select id="min-rating"><option value="">Any rating</option><option value="4">4+ stars</option><option value="3">3+ stars</option><option value="2">2+ stars</option></select><select id="availability"><option value="">Any availability</option><option value="available">Available</option><option value="unavailable">Unavailable</option></select></div>
+      <div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Rating</th><th>Availability</th></tr></thead><tbody id="products"><tr><td colspan="5" class="empty">Run a scrape to populate the observatory.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="analysis"><div class="section-heading"><div><span class="eyebrow">ANALYSIS</span><h2>What the crawl found</h2></div></div><div class="charts"><div class="chart-card"><h3>Price distribution</h3><canvas id="price-chart"></canvas></div><div class="chart-card"><h3>Rating distribution</h3><canvas id="rating-chart"></canvas></div><div class="chart-card wide"><h3>Price vs rating</h3><canvas id="scatter-chart"></canvas></div><div class="chart-card wide"><h3>Products by category</h3><canvas id="category-chart"></canvas></div></div></section>
+    <section class="log-panel"><div class="section-heading"><div><span class="eyebrow">ACTIVITY LOG</span><h2>Scrape trail</h2></div></div><pre id="logs">No activity yet.</pre></section>
+  </main>
+  <dialog id="product-dialog"><button class="close" onclick="document.getElementById('product-dialog').close()">x</button><div id="product-detail"></div></dialog>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+.charts {
+  max-height: 760px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 14px 10px 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c2c0 transparent;
+}
+
+.charts::-webkit-scrollbar {
+  width: 8px;
+}
+
+.charts::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.charts::-webkit-scrollbar-thumb {
+  background: #b8c2c0;
+  border: 2px solid var(--paper);
+  border-radius: 20px;
+}
+
+.charts::-webkit-scrollbar-thumb:hover {
+  background: var(--teal);
+}
+
+@media (max-width: 900px) {
+  .charts {
+    max-height: 690px;
+  }
+}
+
+@media (max-width: 560px) {
+  .charts {
+    max-height: 620px;
+    padding-right: 8px;
+  }
+}
