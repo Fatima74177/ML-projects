@@ -1,53 +1,20 @@
 # Render Deployment Guide
 
-This repository is prepared for a Render deployment using two services:
-
-1. `eef-backend` - FastAPI backend
-2. `eef-frontend` - React + Vite static frontend
+The Render blueprint deploys one Docker web service. FastAPI serves both the
+React + Vite frontend and the API, so the app and API share one Render URL.
 
 ## 1) Push to GitHub
 
 Push the repository to GitHub before creating Render services.
 
-## 2) Create the backend service on Render
+## 2) Create the Render service
 
-- New > Web Service
-- Connect GitHub repository
-- Select the repository
-- Name: `eef-backend`
-- Root Directory: `backend`
-- Runtime: Python
-- Build Command: `pip install -r requirements.txt`
-- Start Command: `gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT`
-- Health Check Path: `/health`
+- In Render, choose **New > Blueprint** and connect the GitHub repository.
+- Render reads `render.yaml` and creates one Docker web service named `eef-platform`.
+- The Docker build compiles the frontend and packages it with the FastAPI backend.
+- Set `JWT_SECRET` to a strong secret in the Render service environment.
+- Keep the configured demo defaults for the other environment variables, or replace `DATABASE_URL` with a managed production database.
 
-Set environment variables:
-
-- `ENV=production`
-- `DEBUG=false`
-- `DATABASE_URL=sqlite:///./eef_demo.db`
-- `REDIS_ENABLED=false`
-- `KAFKA_ENABLED=false`
-- `NEO4J_ENABLED=false`
-- `JWT_SECRET=<generate a strong secret>`
-- `CORS_ORIGINS=https://eef-frontend.onrender.com`
-
-## 3) Create the frontend service on Render
-
-- New > Web Service
-- Connect the same GitHub repository
-- Name: `eef-frontend`
-- Root Directory: `frontend`
-- Runtime: Static Site
-- Build Command: `npm install && npm run build`
-- Publish Directory: `dist`
-
-Set environment variables:
-
-- `VITE_API_BASE_URL=https://eef-backend.onrender.com/api/v1`
-
-## 4) Final step
-
-After the backend service is live, replace the temporary frontend CORS value with the real frontend URL if it differs from `https://eef-frontend.onrender.com`.
-
-This setup is designed for a simple Render deployment without Docker and without local-only URLs.
+The deployed frontend is available at the service URL. API requests use that same
+origin under `/api/v1`; API documentation and health checks remain at `/docs` and
+`/health`. No frontend API URL or cross-origin CORS setting is needed.

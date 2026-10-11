@@ -1,10 +1,11 @@
 """EEF Platform - FastAPI application entrypoint."""
 import time
 import uuid
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -25,6 +26,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 rate_limiter = RequestRateLimiter()
 
 app.add_middleware(
@@ -129,9 +131,32 @@ def on_startup():
 
 @app.get("/")
 def root():
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
     return {
         "name": settings.APP_NAME,
         "status": "ok",
         "docs": "/docs",
         "note": "Prototype/case-study platform. See README.md for scope, model labels, and limitations.",
     }
+
+
+@app.get("/{path:path}", include_in_schema=False)
+def frontend_fallback(path: str):
+    api_prefix = settings.API_V1_PREFIX.strip("/")
+    if path == api_prefix or path.startswith(f"{api_prefix}/"):
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "error_code": "HTTP_404", "message": "Not Found", "details": {}},
+        )
+
+    dist_dir = FRONTEND_DIST.resolve()
+    requested_file = (dist_dir / path).resolve()
+    if dist_dir in requested_file.parents and requested_file.is_file():
+        return FileResponse(requested_file)
+
+    index_file = dist_dir / "index.html"
+    if index_file.is_file():
+        return FileResponse(index_file)
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})
