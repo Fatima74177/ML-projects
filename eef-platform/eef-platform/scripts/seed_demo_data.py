@@ -25,6 +25,7 @@ from datetime import datetime, timedelta
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 from app.core.database import SessionLocal, init_db  # noqa: E402
+from app.core.config import settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.models._all import (  # noqa: E402
     User, Identity, Device, DeviceLink, IPAddress, IPLink, Document,
@@ -302,11 +303,10 @@ def seed():
 
     db.close()
     print("\nSeed complete.")
-    print("Demo credentials:")
-    print("  admin    / Admin@12345")
-    print("  analyst  / Analyst@12345")
-    print("  viewer   / Viewer@12345")
-    print("(Local development only -- rotate/remove before any non-local deployment.)")
+    if settings.ENV.lower() == "development":
+        print("Demo credentials are available in the local development guide.")
+    else:
+        print("Demo credentials are not printed outside development.")
 
 
 if __name__ == "__main__":

@@ -126,7 +126,7 @@ app.include_router(health.router, tags=["Health"])
 @app.on_event("startup")
 def on_startup():
     init_db()
-    logger.info("EEF platform started (env=%s, db=%s)" % (settings.ENV, settings.DATABASE_URL))
+    logger.info("EEF platform started (env=%s)" % settings.ENV)
 
 
 @app.get("/")
