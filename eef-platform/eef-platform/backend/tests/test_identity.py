@@ -1,3 +1,8 @@
+import io
+
+import pymupdf
+
+
 def test_full_verification_pipeline(client, analyst_token, demo_dir):
     with open(f"{demo_dir}/documents/demo_national_id_1.png", "rb") as doc, \
          open(f"{demo_dir}/images/face_a_1.png", "rb") as selfie:
@@ -15,6 +20,28 @@ def test_full_verification_pipeline(client, analyst_token, demo_dir):
         assert key in body
     assert body["status"] in ("VERIFIED", "REVIEW_REQUIRED", "REJECTED")
     assert "decision_reasoning" in body["explanation"]
+
+
+def test_full_verification_accepts_pdf_document(client, analyst_token, demo_dir):
+    pdf = pymupdf.open()
+    page = pdf.new_page()
+    page.insert_text((72, 72), "Name: Test Person\nDocument No: 123456789")
+    document_bytes = pdf.tobytes()
+    pdf.close()
+
+    with open(f"{demo_dir}/images/face_a_1.png", "rb") as selfie:
+        response = client.post(
+            "/api/v1/identity/verify",
+            headers={"Authorization": f"Bearer {analyst_token}"},
+            data={"full_name": "Test Person", "document_type": "NATIONAL_ID"},
+            files={
+                "document": ("document.pdf", io.BytesIO(document_bytes), "application/pdf"),
+                "selfie": ("selfie.png", selfie, "image/png"),
+            },
+        )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["verification_id"]
 
 
 def test_verification_invalid_document_type(client, analyst_token, demo_dir):

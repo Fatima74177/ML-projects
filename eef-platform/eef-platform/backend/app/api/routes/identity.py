@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.security import require_analyst, get_current_user
 from app.models._all import Identity, VerificationSession, DocumentType
 from app.services import identity_service
+from app.services.document_service import normalize_document_image
 from app.utils.validators import validate_and_read
 
 router = APIRouter()
@@ -32,6 +33,10 @@ async def verify_identity(
         raise HTTPException(status_code=422, detail=f"document_type must be one of {[d.value for d in DocumentType]}")
 
     doc_bytes = await validate_and_read(document, settings.ALLOWED_DOC_EXT)
+    try:
+        doc_bytes = normalize_document_image(doc_bytes, document.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     selfie_bytes = await validate_and_read(selfie, settings.ALLOWED_IMAGE_EXT)
 
     identity = Identity(full_name=full_name, email=email or None, phone=phone or None)

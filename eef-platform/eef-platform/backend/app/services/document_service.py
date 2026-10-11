@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import pytesseract
+import pymupdf
 import cv2
 import numpy as np
 
@@ -24,6 +25,28 @@ DATE_RE = re.compile(r"\b(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}|\d{4}[/\-.]\d{1,2}[/
 DOC_NUMBER_RE = re.compile(r"\b([A-Z]{1,3}[0-9]{5,10}|[0-9]{6,12})\b")
 NAME_LINE_RE = re.compile(r"(?:name|full name)\s*[:\-]?\s*([A-Za-z ,.'-]{3,60})", re.IGNORECASE)
 NATIONALITY_RE = re.compile(r"(?:nationality)\s*[:\-]?\s*([A-Za-z]{3,30})", re.IGNORECASE)
+OCR_TIMEOUT_SECONDS = 12
+
+
+def normalize_document_image(file_bytes: bytes, filename: str | None = None) -> bytes:
+    """Convert the first page of an uploaded PDF to PNG for OCR and face analysis."""
+    is_pdf = (filename or "").lower().endswith(".pdf") or file_bytes.startswith(b"%PDF-")
+    if not is_pdf:
+        return file_bytes
+    if not file_bytes.startswith(b"%PDF-"):
+        raise ValueError("The uploaded PDF file is invalid.")
+
+    try:
+        with pymupdf.open(stream=file_bytes, filetype="pdf") as pdf:
+            if pdf.page_count == 0:
+                raise ValueError("The uploaded PDF has no pages.")
+            page = pdf.load_page(0)
+            pixmap = page.get_pixmap(matrix=pymupdf.Matrix(2, 2), alpha=False)
+            return pixmap.tobytes("png")
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("Could not read the uploaded PDF.") from exc
 
 
 @dataclass
@@ -47,7 +70,9 @@ def _preprocess_for_ocr(img_bgr: np.ndarray) -> np.ndarray:
 
 def run_ocr(img_bgr: np.ndarray) -> tuple[str, float]:
     processed = _preprocess_for_ocr(img_bgr)
-    data = pytesseract.image_to_data(processed, output_type=pytesseract.Output.DICT)
+    data = pytesseract.image_to_data(
+        processed, output_type=pytesseract.Output.DICT, timeout=OCR_TIMEOUT_SECONDS,
+    )
     words, confs = [], []
     for txt, conf in zip(data["text"], data["conf"]):
         txt = txt.strip()
@@ -112,14 +137,21 @@ def analyze_document(file_bytes: bytes) -> DocumentAnalysisResult:
     img = bytes_to_cv2(file_bytes)
     quality = image_quality_score(img)
     ocr_available = True
+    ocr_timed_out = False
     try:
         text, ocr_conf = run_ocr(img)
     except pytesseract.TesseractNotFoundError:
         text, ocr_conf = "", 0.0
         ocr_available = False
+    except RuntimeError:
+        text, ocr_conf = "", 0.0
+        ocr_available = False
+        ocr_timed_out = True
     fields = extract_fields(text)
     anomalies = detect_anomalies(text, fields, ocr_conf, quality)
-    if not ocr_available:
+    if ocr_timed_out:
+        anomalies.append("Tesseract OCR timed out; try a smaller or clearer document image.")
+    elif not ocr_available:
         anomalies.append("Tesseract OCR is not installed; document text extraction was skipped.")
 
     # Document score: blends OCR confidence, image quality, and field completeness.

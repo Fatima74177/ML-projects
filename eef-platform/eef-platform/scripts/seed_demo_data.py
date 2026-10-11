@@ -149,22 +149,25 @@ def seed():
     db.commit()
 
     # ------------------------------------------------------ Verification sessions
-    print("Running 2 verification sessions through the REAL pipeline against demo assets...")
     demo_dir = os.path.join(os.path.dirname(__file__), "..", "data", "demo")
-    doc_bytes = open(os.path.join(demo_dir, "documents", "demo_national_id_1.png"), "rb").read()
-    selfie_bytes = open(os.path.join(demo_dir, "images", "face_a_1.png"), "rb").read()
-    mismatch_selfie_bytes = open(os.path.join(demo_dir, "images", "face_b_1.png"), "rb").read()
+    if settings.ENV.lower() == "development":
+        print("Running 2 verification sessions through the REAL pipeline against demo assets...")
+        doc_bytes = open(os.path.join(demo_dir, "documents", "demo_national_id_1.png"), "rb").read()
+        selfie_bytes = open(os.path.join(demo_dir, "images", "face_a_1.png"), "rb").read()
+        mismatch_selfie_bytes = open(os.path.join(demo_dir, "images", "face_b_1.png"), "rb").read()
 
-    real_session_1 = identity_service.run_verification(
-        db, identities[0], "NATIONAL_ID", doc_bytes, selfie_bytes,
-        device_fingerprint="DEV-FP-0000", ip_address=rand_ip(0), actor="seed_script",
-    )
-    real_session_2 = identity_service.run_verification(
-        db, identities[1], "NATIONAL_ID", doc_bytes, mismatch_selfie_bytes,
-        device_fingerprint="DEV-FP-0000", ip_address=rand_ip(0), actor="seed_script",
-    )
-    print(f"  -> session {real_session_1.id}: status={real_session_1.status} trust={real_session_1.trust_score}")
-    print(f"  -> session {real_session_2.id}: status={real_session_2.status} trust={real_session_2.trust_score}")
+        real_session_1 = identity_service.run_verification(
+            db, identities[0], "NATIONAL_ID", doc_bytes, selfie_bytes,
+            device_fingerprint="DEV-FP-0000", ip_address=rand_ip(0), actor="seed_script",
+        )
+        real_session_2 = identity_service.run_verification(
+            db, identities[1], "NATIONAL_ID", doc_bytes, mismatch_selfie_bytes,
+            device_fingerprint="DEV-FP-0000", ip_address=rand_ip(0), actor="seed_script",
+        )
+        print(f"  -> session {real_session_1.id}: status={real_session_1.status} trust={real_session_1.trust_score}")
+        print(f"  -> session {real_session_2.id}: status={real_session_2.status} trust={real_session_2.trust_score}")
+    else:
+        print("Skipping real verification pipeline examples outside development.")
 
     print("Generating 28 additional historical verification sessions "
           "(scores computed via the real trust_service formula, not hardcoded)...")
@@ -237,36 +240,42 @@ def seed():
         db.commit()
 
     # ------------------------------------------------------------ Deepfake demo
-    print("Seeding a deepfake analysis example against the demo video (real pipeline)...")
-    from app.services import deepfake_service
-    video_path = os.path.join(demo_dir, "videos", "demo_clip_1.mp4")
-    df_result = deepfake_service.analyze_video(video_path)
-    db.add(DeepfakeResult(
-        identity_id=identities[2].id, media_type="VIDEO", file_path=video_path,
-        deepfake_probability=df_result.deepfake_probability, real_probability=df_result.real_probability,
-        confidence=df_result.confidence, indicators=df_result.indicators,
-        frame_results=df_result.frame_results, metadata_json=df_result.metadata,
-        model_type=df_result.model_type,
-    ))
-    if df_result.deepfake_probability >= 0.5:
-        alert_service.create_alert(db, "DEEPFAKE_DETECTED", "CRITICAL", identities[2].id,
-                                    "Deepfake probability above alert threshold on submitted video.",
-                                    {"probability": df_result.deepfake_probability})
-    db.commit()
+    if settings.ENV.lower() == "development":
+        print("Seeding a deepfake analysis example against the demo video (real pipeline)...")
+        from app.services import deepfake_service
+        video_path = os.path.join(demo_dir, "videos", "demo_clip_1.mp4")
+        df_result = deepfake_service.analyze_video(video_path)
+        db.add(DeepfakeResult(
+            identity_id=identities[2].id, media_type="VIDEO", file_path=video_path,
+            deepfake_probability=df_result.deepfake_probability, real_probability=df_result.real_probability,
+            confidence=df_result.confidence, indicators=df_result.indicators,
+            frame_results=df_result.frame_results, metadata_json=df_result.metadata,
+            model_type=df_result.model_type,
+        ))
+        if df_result.deepfake_probability >= 0.5:
+            alert_service.create_alert(db, "DEEPFAKE_DETECTED", "CRITICAL", identities[2].id,
+                                        "Deepfake probability above alert threshold on submitted video.",
+                                        {"probability": df_result.deepfake_probability})
+        db.commit()
+    else:
+        print("Skipping video Deepfake analysis example outside development.")
 
     # -------------------------------------------------------------- Voice demo
-    print("Seeding a voice analysis example (real DSP pipeline)...")
-    from app.services import voice_service
-    audio_bytes = open(os.path.join(demo_dir, "audio", "demo_voice_1.wav"), "rb").read()
-    voice_result = voice_service.analyze_voice(audio_bytes)
-    db.add(VoiceResult(
-        identity_id=identities[3].id, file_path="demo_voice_1.wav",
-        duration_seconds=voice_result.duration_seconds, sample_rate=voice_result.sample_rate,
-        transcript=voice_result.transcript, speaker_score=voice_result.speaker_score,
-        audio_quality=voice_result.audio_quality, risk_indicators=voice_result.risk_indicators,
-        decision=voice_result.decision, model_type=voice_result.model_type,
-    ))
-    db.commit()
+    if settings.ENV.lower() == "development":
+        print("Seeding a voice analysis example (real DSP pipeline)...")
+        from app.services import voice_service
+        audio_bytes = open(os.path.join(demo_dir, "audio", "demo_voice_1.wav"), "rb").read()
+        voice_result = voice_service.analyze_voice(audio_bytes)
+        db.add(VoiceResult(
+            identity_id=identities[3].id, file_path="demo_voice_1.wav",
+            duration_seconds=voice_result.duration_seconds, sample_rate=voice_result.sample_rate,
+            transcript=voice_result.transcript, speaker_score=voice_result.speaker_score,
+            audio_quality=voice_result.audio_quality, risk_indicators=voice_result.risk_indicators,
+            decision=voice_result.decision, model_type=voice_result.model_type,
+        ))
+        db.commit()
+    else:
+        print("Skipping voice analysis example outside development.")
 
     # ------------------------------------------------------------- Fraud cases
     print("Building fraud cases from real detected signals (shared device/doc/IP, repeat failures)...")

@@ -6,14 +6,17 @@ from typing import List, Tuple
 
 import cv2
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 _FACE_CASCADE = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+MAX_IMAGE_SIDE = 2000
 
 
 def bytes_to_cv2(data: bytes) -> np.ndarray:
-    """Decode raw image bytes into a BGR OpenCV array."""
-    img = Image.open(io.BytesIO(data)).convert("RGB")
+    """Decode and bound image dimensions before OpenCV processing."""
+    img = Image.open(io.BytesIO(data))
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    img.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE), Image.Resampling.LANCZOS)
     return cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
 

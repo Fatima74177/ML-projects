@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.security import require_analyst
 from app.services import document_service, audit_service
+from app.utils.validators import validate_and_read
 
 router = APIRouter()
 
@@ -18,10 +19,11 @@ async def analyze_document(
     db: Session = Depends(get_db),
     user=Depends(require_analyst),
 ):
-    data = await document.read()
-    if not data:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    data = await validate_and_read(document, settings.ALLOWED_DOC_EXT)
+    try:
+        data = document_service.normalize_document_image(data, document.filename)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     result = document_service.analyze_document(data)
     audit_service.record(db, actor=user.username, action="DOCUMENT_ANALYSIS", result="SUCCESS")
     return {
